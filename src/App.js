@@ -3,6 +3,7 @@ import axios from "axios";
 import "./App.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorComponent from "./components/ErrorComponent";
+import IssuesList from "./components/IssuesList";
 
 // Lazy loaded component for Suspense error
 const LazyComponent = React.lazy(
@@ -15,6 +16,7 @@ const LazyComponent = React.lazy(
 );
 
 function App() {
+  const [currentView, setCurrentView] = useState("demo");
   const [count, setCount] = useState(0);
 
   // 1. Reference Error - Using undefined variable
@@ -210,142 +212,227 @@ function App() {
     });
   };
 
+  const renderContent = () => {
+    switch (currentView) {
+      case "issues":
+        return (
+          <ErrorBoundary>
+            <IssuesList />
+          </ErrorBoundary>
+        );
+      case "demo":
+      default:
+        return (
+          <ErrorBoundary>
+            <div className="App">
+              <header className="App-header">
+                <h1>JavaScript Error Testing</h1>
+                <div className="error-buttons">
+                  <div className="error-section">
+                    <h3>Basic Errors</h3>
+                    <button
+                      onClick={() => {
+                        try {
+                          // eslint-disable-next-line no-undef
+                          console.log(undefinedVariable);
+                        } catch (error) {
+                          throw error;
+                        }
+                      }}
+                      className="error-button"
+                    >
+                      Reference Error
+                    </button>
+                    <button
+                      onClick={() => {
+                        try {
+                          const number = 42;
+                          number();
+                        } catch (error) {
+                          throw error;
+                        }
+                      }}
+                      className="error-button"
+                    >
+                      Type Error
+                    </button>
+                    <button
+                      onClick={() => {
+                        try {
+                          eval("if (true) {");
+                        } catch (error) {
+                          throw error;
+                        }
+                      }}
+                      className="error-button"
+                    >
+                      Syntax Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>Runtime Errors</h3>
+                    <button
+                      onClick={triggerRangeError}
+                      className="error-button"
+                    >
+                      Range Error
+                    </button>
+                    <button onClick={triggerURIError} className="error-button">
+                      URI Error
+                    </button>
+                    <button onClick={triggerDOMError} className="error-button">
+                      DOM Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>Async Errors</h3>
+                    <button
+                      onClick={triggerPromiseError}
+                      className="error-button"
+                    >
+                      Promise Error
+                    </button>
+                    <button
+                      onClick={triggerAsyncError}
+                      className="error-button"
+                    >
+                      Async Error
+                    </button>
+                    <button
+                      onClick={triggerAxiosError}
+                      className="error-button"
+                    >
+                      Axios Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>React Errors</h3>
+                    <button
+                      onClick={triggerSuspenseError}
+                      className="error-button"
+                    >
+                      Suspense Error
+                    </button>
+                    <button
+                      onClick={triggerLocalStorageError}
+                      className="error-button"
+                    >
+                      LocalStorage Error
+                    </button>
+                    <button
+                      onClick={triggerContainerError}
+                      className="error-button"
+                    >
+                      Container Error
+                    </button>
+                    <button
+                      onClick={triggerCSSChunkError}
+                      className="error-button"
+                    >
+                      CSS Chunk Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>Browser Errors</h3>
+                    <button
+                      onClick={triggerResizeObserverError}
+                      className="error-button"
+                    >
+                      ResizeObserver Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>Critical Errors</h3>
+                    <button
+                      onClick={triggerMemoryError}
+                      className="error-button critical"
+                    >
+                      Memory Error
+                    </button>
+                    <button
+                      onClick={triggerStackOverflow}
+                      className="error-button critical"
+                    >
+                      Stack Overflow
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>Background Errors</h3>
+                    <button
+                      onClick={triggerServiceWorkerError}
+                      className="error-button background"
+                    >
+                      Service Worker Error
+                    </button>
+                    <button
+                      onClick={triggerWebSocketError}
+                      className="error-button background"
+                    >
+                      WebSocket Error
+                    </button>
+                    <button
+                      onClick={triggerIndexedDBError}
+                      className="error-button background"
+                    >
+                      IndexedDB Error
+                    </button>
+                    <button
+                      onClick={triggerPerformanceError}
+                      className="error-button background"
+                    >
+                      Performance Error
+                    </button>
+                    <button
+                      onClick={triggerBeaconError}
+                      className="error-button background"
+                    >
+                      Beacon API Error
+                    </button>
+                  </div>
+
+                  <div className="error-section">
+                    <h3>React Component Errors</h3>
+                    <ErrorComponent />
+                  </div>
+                </div>
+              </header>
+
+              <Suspense fallback={<div>Loading...</div>}>
+                <LazyComponent />
+              </Suspense>
+            </div>
+          </ErrorBoundary>
+        );
+    }
+  };
+
   return (
-    <ErrorBoundary>
-      <div className="App">
-        <header className="App-header">
-          <h1>JavaScript Error Testing</h1>
-          <div className="error-buttons">
-            <div className="error-section">
-              <h3>Basic Errors</h3>
-              <button onClick={triggerReferenceError} className="error-button">
-                Reference Error
-              </button>
-              <button onClick={triggerTypeError} className="error-button">
-                Type Error
-              </button>
-              <button onClick={triggerSyntaxError} className="error-button">
-                Syntax Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>Runtime Errors</h3>
-              <button onClick={triggerRangeError} className="error-button">
-                Range Error
-              </button>
-              <button onClick={triggerURIError} className="error-button">
-                URI Error
-              </button>
-              <button onClick={triggerDOMError} className="error-button">
-                DOM Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>Async Errors</h3>
-              <button onClick={triggerPromiseError} className="error-button">
-                Promise Error
-              </button>
-              <button onClick={triggerAsyncError} className="error-button">
-                Async Error
-              </button>
-              <button onClick={triggerAxiosError} className="error-button">
-                Axios Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>React Errors</h3>
-              <button onClick={triggerSuspenseError} className="error-button">
-                Suspense Error
-              </button>
-              <button
-                onClick={triggerLocalStorageError}
-                className="error-button"
-              >
-                LocalStorage Error
-              </button>
-              <button onClick={triggerContainerError} className="error-button">
-                Container Error
-              </button>
-              <button onClick={triggerCSSChunkError} className="error-button">
-                CSS Chunk Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>Browser Errors</h3>
-              <button
-                onClick={triggerResizeObserverError}
-                className="error-button"
-              >
-                ResizeObserver Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>Critical Errors</h3>
-              <button
-                onClick={triggerMemoryError}
-                className="error-button critical"
-              >
-                Memory Error
-              </button>
-              <button
-                onClick={triggerStackOverflow}
-                className="error-button critical"
-              >
-                Stack Overflow
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>Background Errors</h3>
-              <button
-                onClick={triggerServiceWorkerError}
-                className="error-button background"
-              >
-                Service Worker Error
-              </button>
-              <button
-                onClick={triggerWebSocketError}
-                className="error-button background"
-              >
-                WebSocket Error
-              </button>
-              <button
-                onClick={triggerIndexedDBError}
-                className="error-button background"
-              >
-                IndexedDB Error
-              </button>
-              <button
-                onClick={triggerPerformanceError}
-                className="error-button background"
-              >
-                Performance Error
-              </button>
-              <button
-                onClick={triggerBeaconError}
-                className="error-button background"
-              >
-                Beacon API Error
-              </button>
-            </div>
-
-            <div className="error-section">
-              <h3>React Component Errors</h3>
-              <ErrorComponent />
-            </div>
-          </div>
-
-          <Suspense fallback={<div>Loading...</div>}>
-            <LazyComponent />
-          </Suspense>
-        </header>
-      </div>
-    </ErrorBoundary>
+    <div className="app-container">
+      <nav className="app-nav">
+        <div className="nav-brand">Error Monitor</div>
+        <div className="nav-links">
+          <button
+            className={`nav-link ${currentView === "demo" ? "active" : ""}`}
+            onClick={() => setCurrentView("demo")}
+          >
+            Demo
+          </button>
+          <button
+            className={`nav-link ${currentView === "issues" ? "active" : ""}`}
+            onClick={() => setCurrentView("issues")}
+          >
+            Issues
+          </button>
+        </div>
+      </nav>
+      {renderContent()}
+    </div>
   );
 }
 
