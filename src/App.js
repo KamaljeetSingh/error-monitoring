@@ -4,6 +4,7 @@ import "./App.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ErrorComponent from "./components/ErrorComponent";
 import IssuesList from "./components/IssuesList";
+import ErrorGroupingTest from "./components/ErrorGroupingTest";
 
 // Lazy loaded component for Suspense error
 const LazyComponent = React.lazy(
@@ -406,6 +407,7 @@ function App() {
               <Suspense fallback={<div>Loading...</div>}>
                 <LazyComponent />
               </Suspense>
+              <ErrorGroupingTest />
             </div>
           </ErrorBoundary>
         );
