@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const cors = require("cors");
 require("dotenv").config();
 
@@ -108,7 +108,7 @@ app.get("/api/issues/:issueId/events", async (req, res) => {
     const errorsCollection = db.collection("errors");
 
     const events = await errorsCollection
-      .find({ issueId: issueId })
+      .find({ issueId: new ObjectId(issueId) })
       .sort({ timestamp: -1 })
       .limit(100)
       .toArray();
