@@ -16,6 +16,148 @@ const LazyComponent = React.lazy(
     })
 );
 
+// Error categories by priority
+const ERROR_CATEGORIES = {
+  P0: {
+    label: "Critical (P0)",
+    description:
+      "System-wide failures, security vulnerabilities, data loss, complete app crash, or major feature unavailability",
+    color: "#dc2626",
+    errors: [
+      {
+        name: "Memory Leak",
+        description:
+          "Creates an infinite loop with array allocation, causing browser to crash",
+        trigger: () => {
+          const arr = [];
+          while (true) {
+            arr.push(new Array(1000000));
+          }
+        },
+      },
+      {
+        name: "Stack Overflow",
+        description: "Causes infinite recursion, leading to browser crash",
+        trigger: () => {
+          function recursive() {
+            recursive();
+          }
+          recursive();
+        },
+      },
+      {
+        name: "Security Error",
+        description: "Simulates unauthorized access attempt to sensitive data",
+        trigger: () => {
+          Object.defineProperty(window, "localStorage", {
+            get: () => {
+              throw new Error("Access is denied for this document");
+            },
+          });
+          localStorage.getItem("test");
+        },
+      },
+    ],
+  },
+  P1: {
+    label: "Non-Critical (P1)",
+    description:
+      "Feature degradation, UI issues, or errors with workarounds that don't affect core functionality",
+    color: "#f97316",
+    errors: [
+      {
+        name: "Promise Rejection",
+        description: "Unhandled promise rejection in async operation",
+        trigger: () => {
+          Promise.reject(new Error("Unhandled Promise Rejection"));
+        },
+      },
+      {
+        name: "Network Error",
+        description: "API request failure affecting feature functionality",
+        trigger: async () => {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(), 100);
+          await axios.get("https://api.example.com/data", {
+            signal: controller.signal,
+          });
+        },
+      },
+      {
+        name: "Type Error",
+        description: "Attempts to call a number as a function",
+        trigger: () => {
+          const number = 42;
+          number();
+        },
+      },
+      {
+        name: "Reference Error",
+        description: "Uses an undefined variable",
+        trigger: () => {
+          // eslint-disable-next-line no-undef
+          console.log(undefinedVariable);
+        },
+      },
+      {
+        name: "DOM Error",
+        description: "Attempts to access non-existent element",
+        trigger: () => {
+          document.getElementById("non-existent-element").innerHTML = "test";
+        },
+      },
+      {
+        name: "URI Error",
+        description: "Invalid URI encoding attempt",
+        trigger: () => {
+          decodeURIComponent("%");
+        },
+      },
+      {
+        name: "Range Error",
+        description: "Creates array with invalid length",
+        trigger: () => {
+          new Array(-1);
+        },
+      },
+      {
+        name: "Syntax Error",
+        description: "Invalid JavaScript syntax",
+        trigger: () => {
+          eval("if (true) {");
+        },
+      },
+      {
+        name: "Async Operation",
+        description: "Failed async operation with timeout",
+        trigger: async () => {
+          await new Promise((resolve, reject) => {
+            setTimeout(() => {
+              reject(new Error("Async Operation Failed"));
+            }, 100);
+          });
+        },
+      },
+      {
+        name: "CSS load error",
+        description: "Failed loading css",
+        trigger: () => {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href =
+            "https://jsak.mmtcdn.com/flights/assets/css/search-simple.pwa.16e.css";
+
+          link.onerror = () => {
+            throw new Error("Loading CSS chunk failed");
+          };
+
+          document.head.appendChild(link);
+        },
+      },
+    ],
+  },
+};
+
 function App() {
   const [currentView, setCurrentView] = useState("demo");
   const [count, setCount] = useState(0);
@@ -213,6 +355,59 @@ function App() {
     });
   };
 
+  const renderDemoContent = () => (
+    <div className="demo-container">
+      <div className="demo-header">
+        <h1>Error Testing Dashboard</h1>
+        <p className="demo-description">
+          Test different types of errors categorized by severity. Each error
+          type demonstrates a specific failure scenario in web applications.
+        </p>
+      </div>
+
+      <div className="error-categories">
+        {Object.entries(ERROR_CATEGORIES).map(([priority, category]) => (
+          <div
+            key={priority}
+            className="error-category"
+            style={{ borderColor: category.color }}
+          >
+            <div
+              className="category-header"
+              style={{ backgroundColor: category.color }}
+            >
+              <h2>{category.label}</h2>
+              <p>{category.description}</p>
+            </div>
+            <div className="category-errors">
+              {category.errors.map((error, index) => (
+                <div key={index} className="error-item">
+                  <div className="error-info">
+                    <h3>{error.name}</h3>
+                    <p>{error.description}</p>
+                  </div>
+                  <button
+                    className="error-trigger"
+                    onClick={() => {
+                      try {
+                        error.trigger();
+                      } catch (err) {
+                        throw err;
+                      }
+                    }}
+                    style={{ borderColor: category.color }}
+                  >
+                    Trigger Error
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (currentView) {
       case "issues":
@@ -223,194 +418,7 @@ function App() {
         );
       case "demo":
       default:
-        return (
-          <ErrorBoundary>
-            <div className="App">
-              <header className="App-header">
-                <h1>JavaScript Error Testing</h1>
-                <div className="error-buttons">
-                  <div className="error-section">
-                    <h3>Basic Errors</h3>
-                    <button
-                      onClick={() => {
-                        try {
-                          // eslint-disable-next-line no-undef
-                          console.log(undefinedVariable);
-                        } catch (error) {
-                          throw error;
-                        }
-                      }}
-                      className="error-button"
-                    >
-                      Reference Error
-                    </button>
-                    <button
-                      onClick={() => {
-                        try {
-                          const number = 42;
-                          number();
-                        } catch (error) {
-                          throw error;
-                        }
-                      }}
-                      className="error-button"
-                    >
-                      Type Error
-                    </button>
-                    <button
-                      onClick={() => {
-                        try {
-                          eval("if (true) {");
-                        } catch (error) {
-                          throw error;
-                        }
-                      }}
-                      className="error-button"
-                    >
-                      Syntax Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>Runtime Errors</h3>
-                    <button
-                      onClick={triggerRangeError}
-                      className="error-button"
-                    >
-                      Range Error
-                    </button>
-                    <button onClick={triggerURIError} className="error-button">
-                      URI Error
-                    </button>
-                    <button onClick={triggerDOMError} className="error-button">
-                      DOM Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>Async Errors</h3>
-                    <button
-                      onClick={triggerPromiseError}
-                      className="error-button"
-                    >
-                      Promise Error
-                    </button>
-                    <button
-                      onClick={triggerAsyncError}
-                      className="error-button"
-                    >
-                      Async Error
-                    </button>
-                    <button
-                      onClick={triggerAxiosError}
-                      className="error-button"
-                    >
-                      Axios Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>React Errors</h3>
-                    <button
-                      onClick={triggerSuspenseError}
-                      className="error-button"
-                    >
-                      Suspense Error
-                    </button>
-                    <button
-                      onClick={triggerLocalStorageError}
-                      className="error-button"
-                    >
-                      LocalStorage Error
-                    </button>
-                    <button
-                      onClick={triggerContainerError}
-                      className="error-button"
-                    >
-                      Container Error
-                    </button>
-                    <button
-                      onClick={triggerCSSChunkError}
-                      className="error-button"
-                    >
-                      CSS Chunk Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>Browser Errors</h3>
-                    <button
-                      onClick={triggerResizeObserverError}
-                      className="error-button"
-                    >
-                      ResizeObserver Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>Critical Errors</h3>
-                    <button
-                      onClick={triggerMemoryError}
-                      className="error-button critical"
-                    >
-                      Memory Error
-                    </button>
-                    <button
-                      onClick={triggerStackOverflow}
-                      className="error-button critical"
-                    >
-                      Stack Overflow
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>Background Errors</h3>
-                    <button
-                      onClick={triggerServiceWorkerError}
-                      className="error-button background"
-                    >
-                      Service Worker Error
-                    </button>
-                    <button
-                      onClick={triggerWebSocketError}
-                      className="error-button background"
-                    >
-                      WebSocket Error
-                    </button>
-                    <button
-                      onClick={triggerIndexedDBError}
-                      className="error-button background"
-                    >
-                      IndexedDB Error
-                    </button>
-                    <button
-                      onClick={triggerPerformanceError}
-                      className="error-button background"
-                    >
-                      Performance Error
-                    </button>
-                    <button
-                      onClick={triggerBeaconError}
-                      className="error-button background"
-                    >
-                      Beacon API Error
-                    </button>
-                  </div>
-
-                  <div className="error-section">
-                    <h3>React Component Errors</h3>
-                    <ErrorComponent />
-                  </div>
-                </div>
-              </header>
-
-              <Suspense fallback={<div>Loading...</div>}>
-                <LazyComponent />
-              </Suspense>
-              <ErrorGroupingTest />
-            </div>
-          </ErrorBoundary>
-        );
+        return <ErrorBoundary>{renderDemoContent()}</ErrorBoundary>;
     }
   };
 

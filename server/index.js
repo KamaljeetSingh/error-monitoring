@@ -1,6 +1,7 @@
 const express = require("express");
 const { MongoClient, ObjectId } = require("mongodb");
 const cors = require("cors");
+const { categorizeError } = require("./errorCategorizer");
 require("dotenv").config();
 
 const app = express();
@@ -34,18 +35,29 @@ app.post("/api/log-error", async (req, res) => {
     // Add timestamp
     errorData.timestamp = new Date();
 
+    // Categorize the error
+    const categorization = await categorizeError(errorData);
+    errorData.categorization = categorization;
+
+    console.log("categorization--", categorization);
+
     // Find existing issue by fingerprint only
     const existingIssue = await issuesCollection.findOne({
       fingerprint: errorData.fingerprint,
     });
 
     if (existingIssue) {
-      // Update existing issue - keep categorization separate from grouping logic
+      // Update existing issue
       const updateFields = {
         $inc: { count: 1 },
         $set: {
           lastSeen: new Date(),
           status: existingIssue.status || "unresolved",
+          // Update categorization if it's different or if the new one has higher confidence
+          ...(categorization.confidence >
+            (existingIssue.categorization?.confidence || 0) && {
+            categorization: categorization,
+          }),
         },
         $addToSet: {
           environments: errorData.deviceInfo?.platform,
@@ -53,23 +65,13 @@ app.post("/api/log-error", async (req, res) => {
         },
       };
 
-      // Only update categorization if it's explicitly provided and different
-      if (
-        errorData.categorization &&
-        (!existingIssue.categorization ||
-          JSON.stringify(existingIssue.categorization) !==
-            JSON.stringify(errorData.categorization))
-      ) {
-        updateFields.$set.categorization = errorData.categorization;
-      }
-
       await issuesCollection.updateOne(
         { _id: existingIssue._id },
         updateFields
       );
       errorData.issueId = existingIssue._id;
     } else {
-      // Create new issue with default categorization if none provided
+      // Create new issue with categorization
       const newIssue = {
         fingerprint: errorData.fingerprint,
         firstSeen: new Date(),
@@ -80,11 +82,7 @@ app.post("/api/log-error", async (req, res) => {
         message: errorData.message,
         environments: [errorData.deviceInfo?.platform].filter(Boolean),
         browsers: [errorData.deviceInfo?.userAgent].filter(Boolean),
-        categorization: errorData.categorization || {
-          priority: "P2",
-          explanation: "Default categorization",
-          method: "default",
-        },
+        categorization: categorization,
       };
 
       // Ensure no duplicate issues exist before inserting
@@ -99,16 +97,17 @@ app.post("/api/log-error", async (req, res) => {
           $set: {
             lastSeen: new Date(),
             status: duplicateCheck.status || "unresolved",
+            // Update categorization if it's different or if the new one has higher confidence
+            ...(categorization.confidence >
+              (duplicateCheck.categorization?.confidence || 0) && {
+              categorization: categorization,
+            }),
           },
           $addToSet: {
             environments: errorData.deviceInfo?.platform,
             browsers: errorData.deviceInfo?.userAgent,
           },
         };
-
-        if (errorData.categorization) {
-          updateFields.$set.categorization = errorData.categorization;
-        }
 
         await issuesCollection.updateOne(
           { _id: duplicateCheck._id },
@@ -125,7 +124,10 @@ app.post("/api/log-error", async (req, res) => {
     // Insert error event
     await errorsCollection.insertOne(errorData);
 
-    res.status(200).json({ message: "Error logged successfully" });
+    res.status(200).json({
+      message: "Error logged successfully",
+      categorization: categorization,
+    });
   } catch (error) {
     console.error("Error logging failed:", error);
     res.status(500).json({ message: "Error logging failed" });

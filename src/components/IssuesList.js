@@ -1,9 +1,28 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { PRIORITY_LEVELS } from "../utils/errorCategorizer";
 import "./IssuesList.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+const PRIORITY_LEVELS = {
+  P0: {
+    label: "Most Critical",
+    description: "System inoperability, security breach, complete app failure",
+    color: "#dc2626",
+  },
+  P1: {
+    label: "Critical",
+    description:
+      "Core functionality blocked, UI blocked, component load failure",
+    color: "#f97316",
+  },
+  P2: {
+    label: "Needs Attention",
+    description:
+      "Minor UI issues, runtime type errors, background non-severe errors",
+    color: "#6b7280",
+  },
+};
 
 const IssuesList = () => {
   const [issues, setIssues] = useState([]);
@@ -11,13 +30,12 @@ const IssuesList = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedPriority, setSelectedPriority] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedPriority, setSelectedPriority] = useState("all");
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
 
   useEffect(() => {
     fetchIssues();
-  }, [selectedPriority, selectedStatus]);
+  }, [selectedPriority]);
 
   useEffect(() => {
     if (selectedIssue) {
@@ -71,8 +89,9 @@ const IssuesList = () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (selectedPriority) params.append("priority", selectedPriority);
-      if (selectedStatus) params.append("status", selectedStatus);
+      if (selectedPriority !== "all") {
+        params.append("priority", selectedPriority);
+      }
 
       const response = await axios.get(
         `${process.env.REACT_APP_API_URL}/issues?${params}`
@@ -105,30 +124,19 @@ const IssuesList = () => {
     return new Date(dateString).toLocaleString();
   };
 
-  const getPriorityBadge = (priority) => {
+  const getPriorityCell = (priority) => {
     const level = PRIORITY_LEVELS[priority] || PRIORITY_LEVELS.P2;
     return (
       <span
-        className="priority-badge"
-        style={{ backgroundColor: level.color }}
+        className="priority-cell"
+        style={{
+          backgroundColor: level.color,
+          color: "#ffffff",
+          fontWeight: "500",
+        }}
         title={level.description}
       >
-        {level.icon} {level.label}
-      </span>
-    );
-  };
-
-  const getStatusBadge = (status) => {
-    const statusStyles = {
-      unresolved: { color: "#ef4444", icon: "🔴" },
-      in_progress: { color: "#f97316", icon: "🟠" },
-      resolved: { color: "#22c55e", icon: "🟢" },
-    };
-    const style = statusStyles[status] || statusStyles.unresolved;
-
-    return (
-      <span className="status-badge" style={{ backgroundColor: style.color }}>
-        {style.icon} {status.charAt(0).toUpperCase() + status.slice(1)}
+        {level.label}
       </span>
     );
   };
@@ -148,82 +156,64 @@ const IssuesList = () => {
 
   return (
     <div className="issues-container">
-      <div className="filters">
-        <select
-          value={selectedPriority}
-          onChange={(e) => setSelectedPriority(e.target.value)}
-          className="filter-select"
+      <div className="priority-tabs">
+        <button
+          className={`priority-tab ${
+            selectedPriority === "all" ? "active" : ""
+          }`}
+          onClick={() => setSelectedPriority("all")}
         >
-          <option value="">All Priorities</option>
-          {Object.entries(PRIORITY_LEVELS).map(([key, level]) => (
-            <option key={key} value={key}>
-              {level.icon} {level.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="filter-select"
-        >
-          <option value="">All Statuses</option>
-          <option value="unresolved">Unresolved</option>
-          <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
-        </select>
+          All Issues
+        </button>
+        {Object.entries(PRIORITY_LEVELS).map(([key, level]) => (
+          <button
+            key={key}
+            className={`priority-tab ${
+              selectedPriority === key ? "active" : ""
+            }`}
+            onClick={() => setSelectedPriority(key)}
+            style={{
+              borderColor: level.color,
+              color: selectedPriority === key ? level.color : "inherit",
+            }}
+            title={level.description}
+          >
+            {level.label}
+          </button>
+        ))}
       </div>
 
-      <div className="issues-list">
-        {issues.map((issue) => (
-          <div
-            key={issue._id}
-            className={`issue-card ${
-              selectedIssue?._id === issue._id ? "selected" : ""
-            }`}
-            onClick={() => handleIssueSelect(issue)}
-          >
-            <div className="issue-header">
-              <div className="issue-badges">
-                {getPriorityBadge(issue.categorization?.priority)}
-                {getStatusBadge(issue.status)}
-              </div>
-              <div className="issue-count">
-                {issue.count} {issue.count === 1 ? "occurrence" : "occurrences"}
-              </div>
-            </div>
-
-            <div className="issue-content">
-              <h3 className="issue-title">{issue.message}</h3>
-              <div className="issue-details">
-                <p className="issue-type">Type: {issue.type}</p>
-                <p className="issue-explanation">
-                  {issue.categorization?.explanation ||
-                    "No explanation available"}
-                </p>
-                <p className="issue-method">
-                  Categorized by: {issue.categorization?.method || "default"}
-                </p>
-              </div>
-            </div>
-
-            <div className="issue-footer">
-              <div className="issue-environments">
-                <strong>Environments:</strong>{" "}
-                {issue.environments?.join(", ") || "Unknown"}
-              </div>
-              <div className="issue-browsers">
-                <strong>Browsers:</strong>{" "}
-                {issue.browsers?.slice(0, 3).join(", ")}
-                {issue.browsers?.length > 3 ? "..." : ""}
-              </div>
-              <div className="issue-timestamps">
-                <div>First seen: {formatDate(issue.firstSeen)}</div>
-                <div>Last seen: {formatDate(issue.lastSeen)}</div>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="issues-table-container">
+        <table className="issues-table">
+          <thead>
+            <tr>
+              <th>Error Message</th>
+              <th>Priority</th>
+              <th>Occurrences</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issues.map((issue) => (
+              <tr
+                key={issue._id}
+                className={`issue-row ${
+                  selectedIssue?._id === issue._id ? "selected" : ""
+                }`}
+                onClick={() => handleIssueSelect(issue)}
+              >
+                <td className="issue-message" title={issue.message}>
+                  {issue.message}
+                </td>
+                <td>{getPriorityCell(issue.categorization?.priority)}</td>
+                <td className="issue-count">{issue.count}</td>
+                <td className="issue-last-seen">
+                  {formatDate(issue.lastSeen)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className={`events-overlay ${isOverlayOpen ? "open" : ""}`}>
@@ -239,8 +229,7 @@ const IssuesList = () => {
             <div className="events-overlay-body">
               <div className="selected-issue-details">
                 <div className="selected-issue-badges">
-                  {getPriorityBadge(selectedIssue.categorization?.priority)}
-                  {getStatusBadge(selectedIssue.status)}
+                  {getPriorityCell(selectedIssue.categorization?.priority)}
                 </div>
                 <h3>{selectedIssue.message}</h3>
                 <div className="selected-issue-stats">
@@ -252,7 +241,13 @@ const IssuesList = () => {
                   <h4>Categorization Details</h4>
                   <p>
                     <strong>Priority:</strong>{" "}
-                    {selectedIssue.categorization?.priority}
+                    {PRIORITY_LEVELS[selectedIssue.categorization?.priority]
+                      ?.label || "Unknown"}
+                  </p>
+                  <p>
+                    <strong>Description:</strong>{" "}
+                    {PRIORITY_LEVELS[selectedIssue.categorization?.priority]
+                      ?.description || "No description available"}
                   </p>
                   <p>
                     <strong>Explanation:</strong>{" "}

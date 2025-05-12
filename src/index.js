@@ -5,7 +5,7 @@ import App from "./App";
 import { logError } from "./utils/errorLogger";
 
 // Global error handler
-window.onerror = function (message, source, lineno, colno, error) {
+window.onerror = async function (message, source, lineno, colno, error) {
   const errorInfo = {
     type: "runtime",
     message,
@@ -15,21 +15,31 @@ window.onerror = function (message, source, lineno, colno, error) {
     stack: error?.stack,
   };
 
-  console.error("Global error caught:", errorInfo);
-  logError(errorInfo);
+  try {
+    console.error("Global error caught:", errorInfo);
+    const categorization = await logError(errorInfo);
+    console.log("Error categorized as:", categorization);
+  } catch (loggingError) {
+    console.error("Failed to log error:", loggingError);
+  }
   return false;
 };
 
 // Unhandled promise rejection handler
-window.onunhandledrejection = function (event) {
+window.onunhandledrejection = async function (event) {
   const errorInfo = {
     type: "promise",
     message: event.reason?.message || "Unhandled Promise Rejection",
     stack: event.reason?.stack,
   };
 
-  console.error("Unhandled promise rejection:", errorInfo);
-  logError(errorInfo);
+  try {
+    console.error("Unhandled promise rejection:", errorInfo);
+    const categorization = await logError(errorInfo);
+    console.log("Error categorized as:", categorization);
+  } catch (loggingError) {
+    console.error("Failed to log error:", loggingError);
+  }
 };
 
 const container = document.getElementById("root");

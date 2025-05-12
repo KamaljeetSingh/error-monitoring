@@ -1,5 +1,4 @@
 import axios from "axios";
-import { categorizeError } from "./errorCategorizer";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
@@ -234,14 +233,11 @@ const generateFingerprint = (errorInfo) => {
   return murmurhash3(components.join("|"));
 };
 
-// Function to log error to MongoDB
+// Function to log error to server
 export const logError = async (errorInfo) => {
   try {
     // Generate fingerprint for grouping
     const fingerprint = generateFingerprint(errorInfo);
-
-    // Get error categorization
-    const categorization = await categorizeError(errorInfo);
 
     const errorData = {
       ...errorInfo,
@@ -249,15 +245,14 @@ export const logError = async (errorInfo) => {
       deviceInfo: getDeviceInfo(),
       pageInfo: getPageInfo(),
       timestamp: new Date().toISOString(),
-      categorization: {
-        priority: categorization.priority,
-        explanation: categorization.explanation,
-        method: categorization.method,
-      },
     };
 
-    await axios.post(`${API_URL}/log-error`, errorData);
+    const response = await axios.post(`${API_URL}/log-error`, errorData);
+
+    // Return the categorization from the server response if needed
+    return response.data.categorization;
   } catch (error) {
     console.error("Failed to log error:", error);
+    throw error; // Re-throw to allow error handling by the caller
   }
 };
