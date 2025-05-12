@@ -1,4 +1,5 @@
 import axios from "axios";
+import { categorizeError } from "./errorCategorizer";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
@@ -239,12 +240,20 @@ export const logError = async (errorInfo) => {
     // Generate fingerprint for grouping
     const fingerprint = generateFingerprint(errorInfo);
 
+    // Get error categorization
+    const categorization = await categorizeError(errorInfo);
+
     const errorData = {
       ...errorInfo,
       fingerprint,
       deviceInfo: getDeviceInfo(),
       pageInfo: getPageInfo(),
       timestamp: new Date().toISOString(),
+      categorization: {
+        priority: categorization.priority,
+        explanation: categorization.explanation,
+        method: categorization.method,
+      },
     };
 
     await axios.post(`${API_URL}/log-error`, errorData);

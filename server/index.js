@@ -34,31 +34,43 @@ app.post("/api/log-error", async (req, res) => {
     // Add timestamp
     errorData.timestamp = new Date();
 
-    // Find or create an issue based on the fingerprint
+    // Find existing issue by fingerprint only
     const existingIssue = await issuesCollection.findOne({
       fingerprint: errorData.fingerprint,
     });
 
     if (existingIssue) {
-      // Update existing issue
+      // Update existing issue - keep categorization separate from grouping logic
+      const updateFields = {
+        $inc: { count: 1 },
+        $set: {
+          lastSeen: new Date(),
+          status: existingIssue.status || "unresolved",
+        },
+        $addToSet: {
+          environments: errorData.deviceInfo?.platform,
+          browsers: errorData.deviceInfo?.userAgent,
+        },
+      };
+
+      // Only update categorization if it's explicitly provided and different
+      if (
+        errorData.categorization &&
+        (!existingIssue.categorization ||
+          JSON.stringify(existingIssue.categorization) !==
+            JSON.stringify(errorData.categorization))
+      ) {
+        updateFields.$set.categorization = errorData.categorization;
+      }
+
       await issuesCollection.updateOne(
         { _id: existingIssue._id },
-        {
-          $inc: { count: 1 },
-          $set: {
-            lastSeen: new Date(),
-            status: existingIssue.status || "unresolved",
-          },
-          $addToSet: {
-            environments: errorData.deviceInfo?.platform,
-            browsers: errorData.deviceInfo?.userAgent,
-          },
-        }
+        updateFields
       );
       errorData.issueId = existingIssue._id;
     } else {
-      // Create new issue
-      const issueResult = await issuesCollection.insertOne({
+      // Create new issue with default categorization if none provided
+      const newIssue = {
         fingerprint: errorData.fingerprint,
         firstSeen: new Date(),
         lastSeen: new Date(),
@@ -66,10 +78,48 @@ app.post("/api/log-error", async (req, res) => {
         status: "unresolved",
         type: errorData.type,
         message: errorData.message,
-        environments: [errorData.deviceInfo?.platform],
-        browsers: [errorData.deviceInfo?.userAgent],
+        environments: [errorData.deviceInfo?.platform].filter(Boolean),
+        browsers: [errorData.deviceInfo?.userAgent].filter(Boolean),
+        categorization: errorData.categorization || {
+          priority: "P2",
+          explanation: "Default categorization",
+          method: "default",
+        },
+      };
+
+      // Ensure no duplicate issues exist before inserting
+      const duplicateCheck = await issuesCollection.findOne({
+        fingerprint: errorData.fingerprint,
       });
-      errorData.issueId = issueResult.insertedId;
+
+      if (duplicateCheck) {
+        // If a duplicate was created in the meantime, update it instead
+        const updateFields = {
+          $inc: { count: 1 },
+          $set: {
+            lastSeen: new Date(),
+            status: duplicateCheck.status || "unresolved",
+          },
+          $addToSet: {
+            environments: errorData.deviceInfo?.platform,
+            browsers: errorData.deviceInfo?.userAgent,
+          },
+        };
+
+        if (errorData.categorization) {
+          updateFields.$set.categorization = errorData.categorization;
+        }
+
+        await issuesCollection.updateOne(
+          { _id: duplicateCheck._id },
+          updateFields
+        );
+        errorData.issueId = duplicateCheck._id;
+      } else {
+        // Insert new issue
+        const issueResult = await issuesCollection.insertOne(newIssue);
+        errorData.issueId = issueResult.insertedId;
+      }
     }
 
     // Insert error event
@@ -82,15 +132,29 @@ app.post("/api/log-error", async (req, res) => {
   }
 });
 
-// Get issues endpoint
+// Get issues endpoint with priority filtering
 app.get("/api/issues", async (req, res) => {
   try {
+    const { priority, status } = req.query;
     const db = client.db("error-monitoring");
     const issuesCollection = db.collection("issues");
 
+    // Build query based on filters
+    const query = {};
+    if (priority) {
+      query["categorization.priority"] = priority;
+    }
+    if (status) {
+      query.status = status;
+    }
+
     const issues = await issuesCollection
-      .find({})
-      .sort({ lastSeen: -1 })
+      .find(query)
+      .sort({
+        // Sort by priority first (P0 -> P3), then by last seen
+        "categorization.priority": 1,
+        lastSeen: -1,
+      })
       .toArray();
 
     res.status(200).json(issues);

@@ -119,7 +119,7 @@ function App() {
         "ResizeObserver loop completed with undelivered notifications"
       );
     });
-    observer.observe(document.body);
+    // observer.observe(document.body);
     // Force resize
     window.dispatchEvent(new Event("resize"));
   };
