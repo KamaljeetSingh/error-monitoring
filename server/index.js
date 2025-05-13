@@ -2,6 +2,7 @@ const express = require("express");
 const { MongoClient, ObjectId } = require("mongodb");
 const cors = require("cors");
 const { categorizeError } = require("./errorCategorizer");
+const { generateFingerprint } = require("./fingerprintGenerator");
 require("dotenv").config();
 
 const app = express();
@@ -35,11 +36,13 @@ app.post("/api/log-error", async (req, res) => {
     // Add timestamp
     errorData.timestamp = new Date();
 
+    // Generate fingerprint on the server side
+    const fingerprint = generateFingerprint(errorData);
+    errorData.fingerprint = fingerprint;
+
     // Categorize the error
     const categorization = await categorizeError(errorData);
     errorData.categorization = categorization;
-
-    console.log("categorization--", categorization);
 
     // Find existing issue by fingerprint only
     const existingIssue = await issuesCollection.findOne({

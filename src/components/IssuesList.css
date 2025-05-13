@@ -10,30 +10,50 @@
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .priority-tab {
   padding: 8px 16px;
-  border: 2px solid transparent;
+  border: 2px solid;
   border-radius: 6px;
-  background: none;
   font-size: 14px;
   font-weight: 500;
-  color: #6b7280;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .priority-tab:hover {
-  background-color: #f9fafb;
-  color: #374151;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .priority-tab.active {
-  background-color: #f9fafb;
-  font-weight: 600;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Specific styles for each priority tab when active */
+.priority-tab[style*="border-color: #dc2626"].active {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.priority-tab[style*="border-color: #f97316"].active {
+  background-color: #f97316;
+  border-color: #f97316;
+}
+
+.priority-tab[style*="border-color: #6b7280"].active {
+  background-color: #6b7280;
+  border-color: #6b7280;
+}
+
+/* All Issues tab specific style */
+.priority-tab:not([style*="border-color"]).active {
+  background-color: #4b5563;
+  border-color: #4b5563;
+  color: white;
 }
 
 .issues-table-container {

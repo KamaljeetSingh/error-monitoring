@@ -30,7 +30,7 @@ const IssuesList = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedPriority, setSelectedPriority] = useState("all");
+  const [selectedPriority, setSelectedPriority] = useState("P0");
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
 
   useEffect(() => {
@@ -162,6 +162,12 @@ const IssuesList = () => {
             selectedPriority === "all" ? "active" : ""
           }`}
           onClick={() => setSelectedPriority("all")}
+          style={{
+            borderColor: "#4b5563",
+            color: selectedPriority === "all" ? "white" : "#4b5563",
+            backgroundColor:
+              selectedPriority === "all" ? "#4b5563" : "transparent",
+          }}
         >
           All Issues
         </button>
@@ -174,7 +180,9 @@ const IssuesList = () => {
             onClick={() => setSelectedPriority(key)}
             style={{
               borderColor: level.color,
-              color: selectedPriority === key ? level.color : "inherit",
+              color: selectedPriority === key ? "white" : "#4b5563",
+              backgroundColor:
+                selectedPriority === key ? level.color : "transparent",
             }}
             title={level.description}
           >
